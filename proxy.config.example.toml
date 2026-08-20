@@ -1,0 +1,37 @@
+# Redirect rules for @hummingbirdworks/proxy.
+#
+# Copy this file to `proxy.config.toml` and edit the rules below.
+# All relative file/folder paths are resolved relative to THIS config file's
+# location (not the proxy script).
+#
+# Tip: use single-quoted 'literal strings' for Windows absolute paths so
+# backslashes are kept as-is, e.g. folder = 'C:\Users\me\repo\out'.
+#
+# Optional keys on any rule:
+#   domain   = a host string, or an array of host strings (omit for all hosts)
+#   disabled = true to skip the rule
+
+# Single web resource file -> local file.
+[[rules]]
+type = "single"
+name = "test_/testfolder/abc.html"
+file = "./webresources/testfolder/abc.html"
+
+# Folder of web resources -> local folder.
+[[rules]]
+type = "folder"
+name = "test_/testfolder2/"
+folder = "./webresources/testfolder2"
+
+# Folder of web resources -> local Vite dev server, only for a specific host.
+[[rules]]
+type = "devserver"
+name = "test_/my-folder/"
+url = "https://localhost:5173"
+domain = "myorg.crm.dynamics.com"
+
+# PCF control -> local build output folder.
+[[rules]]
+type = "pcf"
+name = "test.BookingsEditor"
+folder = "./bookings-editor/out/controls/BookingsEditor"
