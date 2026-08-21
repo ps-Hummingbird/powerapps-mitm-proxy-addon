@@ -1,6 +1,6 @@
 {
   "name": "@hummingbirdworks/proxy",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "mitmproxy-based dev proxy that redirects Dataverse / Dynamics 365 web resources and PCF control assets to local dev builds or a running dev server.",
   "bin": {
     "hummingbird-proxy": "bin/hummingbird-proxy.js"
@@ -15,6 +15,7 @@
   "files": [
     "bin/",
     "vite/",
+    "hummingbird_proxy/",
     "powerapp_dev_proxy.py",
     "proxy.config.example.toml",
     "README.md"
