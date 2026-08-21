@@ -1,6 +1,6 @@
 {
   "name": "@hummingbirdworks/proxy",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "mitmproxy-based dev proxy that redirects Dataverse / Dynamics 365 web resources and PCF control assets to local dev builds or a running dev server.",
   "bin": {
     "hummingbird-proxy": "bin/hummingbird-proxy.js"
@@ -12,6 +12,15 @@
     },
     "./package.json": "./package.json"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon/issues"
+  },
+  "homepage": "https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon#readme",
+  "author": "PS Hummingbird",
   "files": [
     "bin/",
     "vite/",
