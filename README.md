@@ -6,14 +6,6 @@ local dev builds or a running dev server (e.g. Vite). This lets you iterate on
 web resources and PCF controls locally without deploying to the environment on
 every change.
 
-## How it works
-
-The package ships a Python mitmproxy addon plus a small Node CLI
-(`hummingbird-proxy`) that launches `mitmdump` with the addon and points it at
-your config file. Redirect rules live in a `proxy.config.toml` file that you
-check into your own repo. **All relative paths in the config are resolved
-relative to the config file**, so the config is portable across machines.
-
 ## Prerequisites
 
 - **Node.js** >= 16 (to run the CLI).
@@ -21,24 +13,15 @@ relative to the config file**, so the config is portable across machines.
   (Python 3.11+, for stdlib TOML support).
   Install from <https://www.mitmproxy.org/> — e.g. `pipx install mitmproxy`.
 
-## Install
+## Install and Configure
 
 ```sh
 npm install -D @hummingbirdworks/proxy
-```
-
-## Configure
-
-Create a config in your repo with the `init` command:
-
-```sh
 npx hummingbird-proxy init
 ```
 
-This copies the bundled example to `./proxy.config.toml` and adds a `proxy`
-script (`"proxy": "hummingbird-proxy"`) to your `package.json`. Pass `--force`
-to overwrite an existing config/script. (You can also copy the example manually
-from `node_modules/@hummingbirdworks/proxy/proxy.config.example.toml`.)
+This creates a proxy.config.toml in the current directory and adds a `proxy`
+script (`"proxy": "hummingbird-proxy"`) to your `package.json`. 
 
 The config is a TOML file. It's a table with a `rules` array-of-tables; each
 `[[rules]]` entry is one redirect:
@@ -82,8 +65,6 @@ Run the proxy from the folder containing `proxy.config.toml`:
 
 ```sh
 npm run proxy
-# or, without the added script:
-npx hummingbird-proxy
 ```
 
 Or point it at a specific config file:
@@ -112,7 +93,7 @@ On first use, install the mitmproxy root certificate so HTTPS interception
 works: with the proxied browser open, visit <http://mitm.it/> and follow the
 instructions for your OS/browser.
 
-### Notes
+### ⚠️ **Notes**
 
 - Chrome and Edge share a single background process across all windows. Either
   close all Chrome/Edge windows before starting the proxy, or use a separate
