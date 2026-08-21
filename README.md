@@ -40,7 +40,7 @@ folder = "./src/webresources/custom-app"
 [[rules]]
 type = "devserver"
 name = "test_/bookings-editor/"
-url = "https://localhost:5173"
+url = "http://localhost:5173"
 domain = "myorg.crm.dynamics.com"
 
 # PCF control -> local build output folder.
@@ -108,9 +108,7 @@ proxied browser open, visit <http://mitm.it/> and follow the instructions.
 ## Using with Vite (HMR)
 
 A `devserver` rule routes a web resource's requests to a running Vite dev
-server for hot module reload on the Dynamics-hosted page. The dev server stays
-on plain HTTP; the proxy relays everything (including the HMR websocket) to
-`localhost`, so no dev-server cert is needed.
+server for hot module reload on the Dynamics-hosted page.
 
 ### Vite config
 
