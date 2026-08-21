@@ -95,15 +95,20 @@ function main() {
     return;
   }
 
-  // First non-flag argument is the config path; everything else is forwarded to mitmdump.
+  // Only the first token can be the config path, and only when it isn't a
+  // flag; everything else is forwarded to mitmdump so a flag's value (e.g. the
+  // `8888` in `-p 8888`) is never mistaken for the config path.
   let configArg;
-  const passthrough = [];
-  for (const arg of argv) {
-    if (configArg === undefined && !arg.startsWith("-")) {
-      configArg = arg;
-    } else {
-      passthrough.push(arg);
-    }
+  let passthrough;
+  if (argv.length > 0 && !argv[0].startsWith("-")) {
+    configArg = argv[0];
+    passthrough = argv.slice(1);
+  } else {
+    passthrough = argv.slice();
+  }
+  // Drop a leading `--` separator; the rest already goes to mitmdump.
+  if (passthrough[0] === "--") {
+    passthrough.shift();
   }
 
   const configPath = path.resolve(process.cwd(), configArg || DEFAULT_CONFIG);

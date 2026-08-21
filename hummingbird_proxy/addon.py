@@ -84,6 +84,7 @@ class DataverseProxy:
                         item_type,
                         item["name"],
                         item["_base_dir"],
+                        root=item["folder"],
                     )
                     return
 
@@ -95,5 +96,12 @@ class DataverseProxy:
                     if is_css:
                         parts.append("css")
                     parts.extend(segment for segment in relative.split("/") if segment)
-                    serving.serve_file(flow, os.path.join(*parts), item_type, item["name"], item["_base_dir"])
+                    serving.serve_file(
+                        flow,
+                        os.path.join(*parts),
+                        item_type,
+                        item["name"],
+                        item["_base_dir"],
+                        root=item["folder"],
+                    )
                     return

@@ -124,6 +124,11 @@ def validate_config(config: list[dict]) -> list[dict]:
         unknown = item.keys() - (required | _OPTIONAL_KEYS | _INTERNAL_KEYS)
         if unknown:
             raise ValueError(f"{label} (type={item_type!r}): unknown keys {sorted(unknown)}")
+        # Prefix matching relies on a trailing slash to mark the name boundary,
+        # so normalize it rather than silently mismatching a sibling resource.
+        if item_type in ("folder", "devserver") and isinstance(item.get("name"), str):
+            if not item["name"].endswith("/"):
+                item["name"] += "/"
         if not item.get("disabled", False):
             enabled.append(item)
     return enabled
