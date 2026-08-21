@@ -20,7 +20,10 @@
     "url": "https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon/issues"
   },
   "homepage": "https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon#readme",
-  "author": "PS Hummingbird",
+  "author": {
+    "name": "Hummingbird",
+    "url": "https://www.hummingbirdworks.ai/"
+  },
   "files": [
     "bin/",
     "vite/",
