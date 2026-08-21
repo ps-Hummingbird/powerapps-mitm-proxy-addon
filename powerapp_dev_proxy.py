@@ -8,8 +8,6 @@ during load, so the sibling ``hummingbird_proxy`` package resolves here. All
 implementation lives in that package; this module is just the entrypoint.
 """
 
-# Version 2026-08-21
-
 from hummingbird_proxy import DataverseProxy, config_path
 
 addons = [DataverseProxy(config_path())]
