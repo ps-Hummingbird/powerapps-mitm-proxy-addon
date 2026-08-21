@@ -127,14 +127,70 @@ instructions for your OS/browser.
   open DevTools → Application → Service Workers and check "Bypass for network"
   to disable the service worker cache.
 
-## Config reference (CLI / env)
+## Using with Vite (HMR)
 
-- **Config path resolution:** the CLI uses the first non-flag argument as the
-  config path, defaulting to `./proxy.config.toml` in the current directory. It
-  passes the resolved absolute path to the addon via the
-  `HUMMINGBIRD_PROXY_CONFIG` environment variable.
-- **Running the addon directly** (without the CLI) is also supported:
+A `devserver` rule routes a web resource's requests to a running Vite dev
+server, giving you hot module reload on the Dynamics-hosted page.
 
-  ```sh
-  HUMMINGBIRD_PROXY_CONFIG=/abs/path/proxy.config.toml mitmdump -s powerapp_dev_proxy.py
-  ```
+The dev server can stay on plain HTTP — the browser only talks to the proxy, and
+the proxy relays requests (including the HMR websocket) to `localhost`. Because
+the Dynamics page is HTTPS, the browser would block an insecure `ws://` HMR
+socket as mixed content, so point the HMR client at `wss` and let the proxy
+forward it to the HTTP dev server. No dev-server cert (or `vite-plugin-mkcert`)
+is needed.
+
+### Vite config
+
+The package ships a Vite plugin that helps with the configuration of web resources. 
+It sets the base path, configures settings to support HMR with the proxy, and turns
+off cache busting since powerapps already has cache busting when you publish customizations.
+
+```ts
+import { defineConfig } from 'vite'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { powerAppsWebResource } from '@hummingbirdworks/proxy/vite'
+
+export default defineConfig({
+  plugins: [
+    svelte(), // or react(), vue(), etc.
+    powerAppsWebResource({ prefix: 'test_/myapp/' }),
+  ],
+  server: { port: 5173 },
+})
+```
+
+Options:
+
+- `prefix` (required): the web resource path, e.g. `test_/myapp/`.
+- `hmrClientPort` (default `443`): port the browser uses for the HMR socket.
+- `stableFilenames` (default `true`): emit unhashed filenames and a single
+  stylesheet. Set `false` to keep Vite's defaults.
+
+If your HTML entry isn't `index.html`, add it to `build.rollupOptions.input`.
+
+### Proxy rule
+
+Point a `devserver` rule at the dev server. The `url` scheme/port must match
+what Vite serves (`http://localhost:5173` by default here):
+
+```toml
+[[rules]]
+type = "devserver"
+name = "test_/myapp/"
+url = "http://localhost:5173"
+domain = "myorg.crm.dynamics.com"
+```
+
+### Run
+
+Start the dev server and the proxy, then browse through the proxy:
+
+```sh
+npm run dev
+npm run proxy
+```
+
+Open the Dynamics page hosting the web resource. Edit → save → the page updates
+without a manual refresh. If HMR doesn't trigger, confirm Vite's port matches
+the rule `url`, that the HMR socket connects over `wss`, and that the service
+worker cache is bypassed (see Notes above).

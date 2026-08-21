@@ -184,7 +184,12 @@ def _web_resource_name(request: http.Request) -> str | None:
     components = request.path_components
     for i, component in enumerate(components):
         if component.lower() == "webresources":
-            return "/".join(components[i + 1:])
+            name = "/".join(components[i + 1:])
+            # path_components drops a trailing slash; keep it so dev-server root
+            # requests (e.g. the Vite HMR base URL) still match a rule prefix.
+            if name and request.path.split("?", 1)[0].endswith("/"):
+                name += "/"
+            return name
     return None
 
 
