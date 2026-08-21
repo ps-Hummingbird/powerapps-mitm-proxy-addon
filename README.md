@@ -2,16 +2,13 @@
 
 A [mitmproxy](https://www.mitmproxy.org/)-based dev proxy that redirects
 Dataverse / Dynamics 365 **web resources** and **PCF control** assets to your
-local dev builds or a running dev server (e.g. Vite). This lets you iterate on
-web resources and PCF controls locally without deploying to the environment on
-every change.
+local dev builds or a running dev server (e.g. Vite), so you can iterate
+locally without deploying on every change.
 
 ## Prerequisites
 
-- **Node.js** >= 16 (to run the CLI).
-- **mitmproxy** installed and `mitmdump` available on your `PATH`
-  (Python 3.11+, for stdlib TOML support).
-  Install from <https://www.mitmproxy.org/> — e.g. `pipx install mitmproxy`.
+- **Node.js** >= 16.
+- **mitmproxy** — install from <https://www.mitmproxy.org/> — e.g. `pipx install mitmproxy`.
 
 ## Install and Configure
 
@@ -59,23 +56,30 @@ Optional keys on any rule:
 - `domain`: a host string, or an array of host strings. Omit for all hosts.
 - `disabled`: `true` to skip the rule.
 
+### Combining several projects with `include`
+
+To proxy several projects against the same environment from one running proxy,
+`include` their configs instead of switching proxies as you navigate:
+
+```toml
+[[rules]]
+type = "include"
+path = "../invoice-editor/proxy.config.toml"
+
+[[rules]]
+type = "include"
+# Use single quotes to support backslashes in absolute paths
+path = 'C:\Users\me\repos\myproject\proxy.config.toml'
+```
+
 ## Usage
 
-Run the proxy from the folder containing `proxy.config.toml`:
+Run the proxy from the folder containing `proxy.config.toml` (or pass a config
+path and any extra `mitmdump` args):
 
 ```sh
 npm run proxy
-```
-
-Or point it at a specific config file:
-
-```sh
-npx hummingbird-proxy ./config/proxy.config.toml
-```
-
-Any extra arguments are forwarded to `mitmdump` (e.g. change the port):
-
-```sh
+# or a specific config, forwarding args to mitmdump (e.g. change the port)
 npx hummingbird-proxy ./proxy.config.toml -p 8888
 ```
 
@@ -89,42 +93,29 @@ chrome.exe --proxy-server="http://localhost:8080"
 
 ### First-time setup
 
-On first use, install the mitmproxy root certificate so HTTPS interception
-works: with the proxied browser open, visit <http://mitm.it/> and follow the
-instructions for your OS/browser.
+Install the mitmproxy root certificate so HTTPS interception works: with the
+proxied browser open, visit <http://mitm.it/> and follow the instructions.
 
 ### ⚠️ **Notes**
 
-- Chrome and Edge share a single background process across all windows. Either
-  close all Chrome/Edge windows before starting the proxy, or use a separate
-  profile for the proxied browser:
-
-  ```sh
-  msedge.exe --user-data-dir="%LOCALAPPDATA%\mitmproxy-browser-profile" --proxy-server="http://localhost:8080"
-  ```
-
-- Power Apps caches web resources and PCF controls in the browser. If changes
-  don't show up, force a full refresh (`Ctrl+Shift+R`). You may also need to
-  open DevTools → Application → Service Workers and check "Bypass for network"
-  to disable the service worker cache.
+- Chrome/Edge share one background process across windows. Close all
+  Chrome/Edge windows first, or use a separate profile:
+  `msedge.exe --user-data-dir="%LOCALAPPDATA%\mitmproxy-browser-profile" --proxy-server="http://localhost:8080"`
+- Power Apps caches assets in the browser. If changes don't show, hard refresh
+  (`Ctrl+Shift+R`); you may also need to bypass the service worker cache
+  (DevTools → Application → Service Workers → "Bypass for network").
 
 ## Using with Vite (HMR)
 
 A `devserver` rule routes a web resource's requests to a running Vite dev
-server, giving you hot module reload on the Dynamics-hosted page.
-
-The dev server can stay on plain HTTP — the browser only talks to the proxy, and
-the proxy relays requests (including the HMR websocket) to `localhost`. Because
-the Dynamics page is HTTPS, the browser would block an insecure `ws://` HMR
-socket as mixed content, so point the HMR client at `wss` and let the proxy
-forward it to the HTTP dev server. No dev-server cert (or `vite-plugin-mkcert`)
-is needed.
+server for hot module reload on the Dynamics-hosted page. The dev server stays
+on plain HTTP; the proxy relays everything (including the HMR websocket) to
+`localhost`, so no dev-server cert is needed.
 
 ### Vite config
 
-The package ships a Vite plugin that helps with the configuration of web resources. 
-It sets the base path, configures settings to support HMR with the proxy, and turns
-off cache busting since powerapps already has cache busting when you publish customizations.
+The package ships a Vite plugin that sets the base path, enables HMR through the
+proxy, and disables cache busting (Power Apps already busts caches on publish).
 
 ```ts
 import { defineConfig } from 'vite'
@@ -173,5 +164,4 @@ npm run proxy
 
 Open the Dynamics page hosting the web resource. Edit → save → the page updates
 without a manual refresh. If HMR doesn't trigger, confirm Vite's port matches
-the rule `url`, that the HMR socket connects over `wss`, and that the service
-worker cache is bypassed (see Notes above).
+the rule `url` and that the service worker cache is bypassed (see Notes above).

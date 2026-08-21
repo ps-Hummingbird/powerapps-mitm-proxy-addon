@@ -64,6 +64,14 @@ Redirect a PCF control to its local build output folder:
     name = "test.BookingsEditor"
     folder = "./bookings-editor/out/controls/BookingsEditor"
 
+Pull in the rules from another config file (so several projects can proxy the
+same Power Apps environment at once without switching proxies). Includes are
+resolved recursively; each included config's relative paths resolve against its
+own location, and every included file is watched for live reloads:
+    [[rules]]
+    type = "include"
+    path = "../bookings-editor/proxy.config.toml"
+
 Optional keys on any entry:
 "domain":   omit for all hosts, a host string, or an array of host strings
 "disabled": true to skip the entry
@@ -111,6 +119,17 @@ _CONFIG_SCHEMA: dict[str, set[str]] = {
 }
 _OPTIONAL_KEYS = {"type", "domain", "disabled"}
 
+# An "include" entry pulls in the rules from another config file. It is expanded
+# away at load time, so it never reaches _validate_config / the request handler.
+_INCLUDE_KEYS = {"path"}
+_INCLUDE_OPTIONAL_KEYS = {"type", "disabled"}
+
+# Keys the loader attaches to each rule internally; not user-provided.
+_INTERNAL_KEYS = {"_base_dir"}
+
+# Safety net against pathological include nesting (cycles are caught separately).
+_MAX_INCLUDE_DEPTH = 20
+
 
 def _config_path() -> str:
     """Absolute path of the TOML config file to load."""
@@ -138,11 +157,55 @@ def _load_config(path: str) -> list[dict]:
     return rules
 
 
-def _resolve_path(path: str) -> str:
-    """Convert a path to absolute, relative to the config file directory."""
+def _load_rules(path: str, _seen: frozenset[str] = frozenset(), _depth: int = 0) -> tuple[list[dict], set[str]]:
+    """Load rules from a config file, expanding any "include" entries.
+
+    Each returned rule carries a "_base_dir" key giving the directory its
+    relative paths resolve against, so rules pulled in from another config keep
+    resolving against that config's own location. Returns
+    (rules, config_paths) where config_paths is every config file touched, used
+    to watch them all for changes.
+    """
+    path = os.path.abspath(path)
+    if path in _seen:
+        raise ValueError(f"include cycle detected at config {path}")
+    if _depth > _MAX_INCLUDE_DEPTH:
+        raise ValueError(f"include nesting too deep (>{_MAX_INCLUDE_DEPTH}) at {path}")
+    _seen = _seen | {path}
+    base_dir = os.path.dirname(path)
+    rules: list[dict] = []
+    config_paths: set[str] = {path}
+
+    for index, item in enumerate(_load_config(path)):
+        if isinstance(item, dict) and item.get("type") == "include":
+            label = f"{path} include[{index}]"
+            missing = _INCLUDE_KEYS - item.keys()
+            if missing:
+                raise ValueError(f"{label}: missing keys {sorted(missing)}")
+            unknown = item.keys() - (_INCLUDE_KEYS | _INCLUDE_OPTIONAL_KEYS)
+            if unknown:
+                raise ValueError(f"{label}: unknown keys {sorted(unknown)}")
+            if item.get("disabled", False):
+                continue
+            target = item["path"]
+            if not os.path.isabs(target):
+                target = os.path.normpath(os.path.join(base_dir, target))
+            sub_rules, sub_paths = _load_rules(target, _seen, _depth + 1)
+            rules.extend(sub_rules)
+            config_paths |= sub_paths
+        elif isinstance(item, dict):
+            rules.append({**item, "_base_dir": base_dir})
+        else:
+            rules.append(item)
+
+    return rules, config_paths
+
+
+def _resolve_path(path: str, base_dir: str) -> str:
+    """Convert a path to absolute, relative to its config file's directory."""
     if os.path.isabs(path):
         return path
-    return os.path.normpath(os.path.join(CONFIG_DIR, path))
+    return os.path.normpath(os.path.join(base_dir, path))
 
 
 def _validate_config(config: list[dict]) -> list[dict]:
@@ -162,7 +225,7 @@ def _validate_config(config: list[dict]) -> list[dict]:
         missing = required - item.keys()
         if missing:
             raise ValueError(f"{label} (type={item_type!r}): missing keys {sorted(missing)}")
-        unknown = item.keys() - (required | _OPTIONAL_KEYS)
+        unknown = item.keys() - (required | _OPTIONAL_KEYS | _INTERNAL_KEYS)
         if unknown:
             raise ValueError(f"{label} (type={item_type!r}): unknown keys {sorted(unknown)}")
         if not item.get("disabled", False):
@@ -219,8 +282,8 @@ def _log_redirect(flow: http.HTTPFlow, rule_type: str, rule_name: str, destinati
     )
 
 
-def _serve_file(flow: http.HTTPFlow, filepath: str, rule_type: str, rule_name: str) -> None:
-    absolute_path = _resolve_path(filepath)
+def _serve_file(flow: http.HTTPFlow, filepath: str, rule_type: str, rule_name: str, base_dir: str) -> None:
+    absolute_path = _resolve_path(filepath, base_dir)
     try:
         with open(absolute_path, "rb") as handle:
             content = handle.read()
@@ -262,14 +325,21 @@ def _config_mtime(path: str) -> float | None:
         return None
 
 
+def _config_mtimes(paths: set[str]) -> dict[str, float | None]:
+    """Modification times for every config file, keyed by path."""
+    return {path: _config_mtime(path) for path in paths}
+
+
 class DataverseProxy:
-    def __init__(self, config: list[dict]) -> None:
-        self.config = _validate_config(config)
-        self._config_mtime = _config_mtime(CONFIG_PATH)
+    def __init__(self, config_path: str) -> None:
+        self.config_path = config_path
+        rules, self._config_paths = _load_rules(config_path)
+        self.config = _validate_config(rules)
+        self._config_mtimes = _config_mtimes(self._config_paths)
         self._watch_task: asyncio.Task | None = None
 
     def running(self) -> None:
-        # Start watching the config file for changes once the event loop is up.
+        # Start watching the config files for changes once the event loop is up.
         if self._watch_task is None:
             self._watch_task = asyncio.ensure_future(self._watch_config())
 
@@ -281,21 +351,27 @@ class DataverseProxy:
     async def _watch_config(self) -> None:
         while True:
             await asyncio.sleep(_CONFIG_POLL_INTERVAL)
-            mtime = _config_mtime(CONFIG_PATH)
-            if mtime is None or mtime == self._config_mtime:
+            mtimes = _config_mtimes(self._config_paths)
+            if mtimes == self._config_mtimes:
                 continue
-            self._config_mtime = mtime
+            self._config_mtimes = mtimes
             self._reload_config()
 
     def _reload_config(self) -> None:
         try:
-            config = _validate_config(_load_config(CONFIG_PATH))
+            rules, paths = _load_rules(self.config_path)
+            config = _validate_config(rules)
         except (OSError, ValueError) as err:
             ctx.log.warn(f"Config reload failed, keeping previous rules: {err}")
             return
         self.config = config
+        self._config_paths = paths
+        self._config_mtimes = _config_mtimes(paths)
         _pcf_patterns.clear()
-        ctx.log.info(f"Reloaded proxy config from {CONFIG_PATH} ({len(config)} active rules)")
+        ctx.log.info(
+            f"Reloaded proxy config from {self.config_path} "
+            f"({len(config)} active rules across {len(paths)} files)"
+        )
 
     def tls_start_server(self, data: tls.TlsData) -> None:
         # Provide a no-verify TLS context for localhost dev servers only. This runs
@@ -349,7 +425,7 @@ class DataverseProxy:
 
             elif item_type == "single":
                 if web_resource == item["name"]:
-                    _serve_file(flow, item["file"], item_type, item["name"])
+                    _serve_file(flow, item["file"], item_type, item["name"], item["_base_dir"])
                     return
 
             elif item_type == "folder":
@@ -360,6 +436,7 @@ class DataverseProxy:
                         os.path.join(item["folder"], *relative.split("/")),
                         item_type,
                         item["name"],
+                        item["_base_dir"],
                     )
                     return
 
@@ -371,12 +448,10 @@ class DataverseProxy:
                     if is_css:
                         parts.append("css")
                     parts.extend(segment for segment in relative.split("/") if segment)
-                    _serve_file(flow, os.path.join(*parts), item_type, item["name"])
+                    _serve_file(flow, os.path.join(*parts), item_type, item["name"], item["_base_dir"])
                     return
 
 
 CONFIG_PATH = _config_path()
-CONFIG_DIR = os.path.dirname(CONFIG_PATH)
-CONFIG = _load_config(CONFIG_PATH)
 
-addons = [DataverseProxy(CONFIG)]
+addons = [DataverseProxy(CONFIG_PATH)]

@@ -25,3 +25,10 @@ domain = "myorg.crm.dynamics.com"
 type = "pcf"
 name = "test.BookingsEditor"
 folder = "./bookings-editor/out/controls/BookingsEditor"
+
+# Pull in the rules from another project's config so several projects can proxy
+# the same Power Apps environment at once. The included config's relative paths
+# resolve against its own location, and it is watched for live reloads too.
+[[rules]]
+type = "include"
+path = "../bookings-editor/proxy.config.toml"
