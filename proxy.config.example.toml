@@ -1,15 +1,5 @@
 # Redirect rules for @hummingbirdworks/proxy.
-#
-# Copy this file to `proxy.config.toml` and edit the rules below.
-# All relative file/folder paths are resolved relative to THIS config file's
-# location (not the proxy script).
-#
-# Tip: use single-quoted 'literal strings' for Windows absolute paths so
-# backslashes are kept as-is, e.g. folder = 'C:\Users\me\repo\out'.
-#
-# Optional keys on any rule:
-#   domain   = a host string, or an array of host strings (omit for all hosts)
-#   disabled = true to skip the rule
+# https://github.com/ps-Hummingbird/powerapps-mitm-proxy-addon/tree/main#configure
 
 # Single web resource file -> local file.
 [[rules]]

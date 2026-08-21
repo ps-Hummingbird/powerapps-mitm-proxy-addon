@@ -84,6 +84,7 @@ Only redirect for a specific host:
 
 # Version 2026-08-20
 
+import asyncio
 import ipaddress
 import mimetypes
 import os
@@ -244,9 +245,52 @@ def _proxy_to_dev_server(flow: http.HTTPFlow, url: str, web_resource: str, rule_
     _log_redirect(flow, "devserver", rule_name, f"{url}{new_path}")
 
 
+# How often (seconds) to poll the config file for changes.
+_CONFIG_POLL_INTERVAL = 1.0
+
+
+def _config_mtime(path: str) -> float | None:
+    """Modification time of the config file, or None if it is missing."""
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
 class DataverseProxy:
     def __init__(self, config: list[dict]) -> None:
         self.config = _validate_config(config)
+        self._config_mtime = _config_mtime(CONFIG_PATH)
+        self._watch_task: asyncio.Task | None = None
+
+    def running(self) -> None:
+        # Start watching the config file for changes once the event loop is up.
+        if self._watch_task is None:
+            self._watch_task = asyncio.ensure_future(self._watch_config())
+
+    def done(self) -> None:
+        if self._watch_task is not None:
+            self._watch_task.cancel()
+            self._watch_task = None
+
+    async def _watch_config(self) -> None:
+        while True:
+            await asyncio.sleep(_CONFIG_POLL_INTERVAL)
+            mtime = _config_mtime(CONFIG_PATH)
+            if mtime is None or mtime == self._config_mtime:
+                continue
+            self._config_mtime = mtime
+            self._reload_config()
+
+    def _reload_config(self) -> None:
+        try:
+            config = _validate_config(_load_config(CONFIG_PATH))
+        except (OSError, ValueError) as err:
+            ctx.log.warn(f"Config reload failed, keeping previous rules: {err}")
+            return
+        self.config = config
+        _pcf_patterns.clear()
+        ctx.log.info(f"Reloaded proxy config from {CONFIG_PATH} ({len(config)} active rules)")
 
     def tls_start_server(self, data: tls.TlsData) -> None:
         # Provide a no-verify TLS context for localhost dev servers only. This runs
