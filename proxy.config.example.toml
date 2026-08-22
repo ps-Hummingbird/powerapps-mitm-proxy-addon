@@ -17,7 +17,7 @@ folder = "./webresources/testfolder2"
 [[rules]]
 type = "devserver"
 name = "test_/my-folder/"
-url = "https://localhost:5173"
+url = "http://localhost:5173"
 domain = "myorg.crm.dynamics.com"
 
 # PCF control -> local build output folder.
