@@ -4,27 +4,27 @@
 # Single web resource file -> local file.
 [[rules]]
 type = "single"
-name = "test_/testfolder/abc.html"
-file = "./webresources/testfolder/abc.html"
+web-resource-name = "test_/testfolder/abc.html"
+local-path = "./webresources/testfolder/abc.html"
 
 # Folder of web resources -> local folder.
 [[rules]]
 type = "folder"
-name = "test_/testfolder2/"
-folder = "./webresources/testfolder2"
+web-resource-folder = "test_/testfolder2/"
+local-path = "./webresources/testfolder2"
 
 # Folder of web resources -> local Vite dev server, only for a specific host.
 [[rules]]
 type = "devserver"
-name = "test_/my-folder/"
-url = "http://localhost:5173"
+web-resource-folder = "test_/my-folder/"
+local-url = "http://localhost:5173"
 domain = "myorg.crm.dynamics.com"
 
 # PCF control -> local build output folder.
 [[rules]]
 type = "pcf"
-name = "test.BookingsEditor"
-folder = "./bookings-editor/out/controls/BookingsEditor"
+control = "test.BookingsEditor"
+local-path = "./bookings-editor/out/controls/BookingsEditor"
 
 # Pull in the rules from another project's config so several projects can proxy
 # the same Power Apps environment at once. The included config's relative paths

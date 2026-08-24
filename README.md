@@ -69,28 +69,28 @@ is one redirect:
 # Single web resource file -> local file
 [[rules]]
 type = "single"
-name = "test_/ribbonscript/opportunity.js"
-file = "./src/webresources/ribbonscript/opportunity.js"
+web-resource-name = "test_/ribbonscript/opportunity.js"
+local-path = "./src/webresources/ribbonscript/opportunity.js"
 
 # Folder of web resources -> local folder
 [[rules]]
 type = "folder"
-name = "test_/custom-app/"
-folder = "./src/webresources/custom-app"
+web-resource-folder = "test_/custom-app/"
+local-path = "./src/webresources/custom-app"
 
 # Folder of web resources -> local dev server (only for one host)
 [[rules]]
 type = "devserver"
-name = "test_/bookings-editor/"
-url = "http://localhost:5173"
+web-resource-folder = "test_/bookings-editor/"
+local-url = "http://localhost:5173"
 domain = "myorg.crm.dynamics.com"
 
 # PCF control -> local build output folder.
 # Single-quoted literal strings keep Windows backslashes as-is.
 [[rules]]
 type = "pcf"
-name = "test.BookingsEditor"
-folder = 'C:\Users\me\repo\bookings-editor\out\controls\BookingsEditor'
+control = "test.BookingsEditor"
+local-path = 'C:\Users\me\repo\bookings-editor\out\controls\BookingsEditor'
 ```
 
 Optional keys on any rule:
@@ -149,14 +149,14 @@ If your HTML entry isn't `index.html`, add it to `build.rollupOptions.input`.
 
 ### Proxy rule
 
-Point a `devserver` rule at the dev server. The `url` scheme/port must match
+Point a `devserver` rule at the dev server. The `local-url` scheme/port must match
 what Vite serves (`http://localhost:5173` by default here):
 
 ```toml
 [[rules]]
 type = "devserver"
-name = "test_/myapp/"
-url = "http://localhost:5173"
+web-resource-folder = "test_/myapp/"
+local-url = "http://localhost:5173"
 domain = "myorg.crm.dynamics.com"
 ```
 
@@ -171,7 +171,7 @@ npm run proxy
 
 Open the Dynamics page hosting the web resource. Edit → save → the page updates
 without a manual refresh. If HMR doesn't trigger, confirm Vite's port matches
-the rule `url` and that the service worker cache is bypassed (see Notes above).
+the rule `local-url` and that the service worker cache is bypassed (see Notes above).
 
 ## Advanced
 
