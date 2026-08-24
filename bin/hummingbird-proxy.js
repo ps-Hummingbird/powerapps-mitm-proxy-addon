@@ -12,27 +12,25 @@ const DEFAULT_CONFIG = "proxy.config.toml";
 
 function printHelp() {
   console.log(
-    [
-      "hummingbird-proxy - dev proxy for Dataverse / Dynamics 365 web resources and PCF controls",
-      "",
-      "Usage:",
-      "  hummingbird-proxy [config-path] [-- mitmdump-args...]",
-      "  hummingbird-proxy init [--force]",
-      "",
-      "Commands:",
-      `  init          Copy the example config to ./${DEFAULT_CONFIG} in the current`,
-      "                directory. Use --force to overwrite an existing file.",
-      "",
-      "Arguments:",
-      `  config-path   Path to a TOML config file. Defaults to ./${DEFAULT_CONFIG}`,
-      "                in the current working directory when omitted.",
-      "",
-      "Any extra arguments are forwarded to mitmdump, e.g.:",
-      "  hummingbird-proxy ./proxy.config.jsonc -p 8888",
-      "",
-      "Prerequisite: mitmproxy must be installed and 'mitmdump' available on PATH.",
-      "  https://www.mitmproxy.org/  (e.g. `pipx install mitmproxy`)",
-    ].join("\n")
+    `hummingbird-proxy - dev proxy for Dataverse / Dynamics 365 web resources and PCF controls
+
+Usage:
+  hummingbird-proxy [config-path] [-- mitmdump-args...]
+  hummingbird-proxy init [--force]
+
+Commands:
+  init          Copy the example config to ./${DEFAULT_CONFIG} in the current
+                directory. Use --force to overwrite an existing file.
+
+Arguments:
+  config-path   Path to a TOML config file. Defaults to ./${DEFAULT_CONFIG}
+                in the current working directory when omitted.
+
+Any extra arguments are forwarded to mitmdump, e.g.:
+  hummingbird-proxy ./proxy.config.toml -p 8888
+
+Prerequisite: mitmproxy must be installed and 'mitmdump' available on PATH.
+  https://www.mitmproxy.org/  (e.g. \`pipx install mitmproxy\`)`
   );
 }
 
