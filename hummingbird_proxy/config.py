@@ -5,10 +5,10 @@ import tomllib
 
 # type -> the set of keys an entry of that type must contain.
 _CONFIG_SCHEMA: dict[str, set[str]] = {
-    "single": {"name", "file"},
-    "folder": {"name", "folder"},
-    "devserver": {"name", "url"},
-    "pcf": {"name", "folder"},
+    "single": {"web-resource-name", "local-path"},
+    "folder": {"web-resource-folder", "local-path"},
+    "devserver": {"web-resource-folder", "local-url"},
+    "pcf": {"control", "local-path"},
 }
 _OPTIONAL_KEYS = {"type", "domain", "disabled"}
 
@@ -124,11 +124,11 @@ def validate_config(config: list[dict]) -> list[dict]:
         unknown = item.keys() - (required | _OPTIONAL_KEYS | _INTERNAL_KEYS)
         if unknown:
             raise ValueError(f"{label} (type={item_type!r}): unknown keys {sorted(unknown)}")
-        # Prefix matching relies on a trailing slash to mark the name boundary,
+        # Prefix matching relies on a trailing slash to mark the folder boundary,
         # so normalize it rather than silently mismatching a sibling resource.
-        if item_type in ("folder", "devserver") and isinstance(item.get("name"), str):
-            if not item["name"].endswith("/"):
-                item["name"] += "/"
+        if item_type in ("folder", "devserver") and isinstance(item.get("web-resource-folder"), str):
+            if not item["web-resource-folder"].endswith("/"):
+                item["web-resource-folder"] += "/"
         if not item.get("disabled", False):
             enabled.append(item)
     return enabled

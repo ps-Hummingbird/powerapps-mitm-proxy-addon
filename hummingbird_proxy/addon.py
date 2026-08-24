@@ -66,33 +66,37 @@ class DataverseProxy:
             item_type = item["type"]
 
             if item_type == "devserver":
-                if web_resource is not None and web_resource.startswith(item["name"]):
-                    serving.proxy_to_dev_server(flow, item["url"], web_resource, item["name"])
+                folder = item["web-resource-folder"]
+                if web_resource is not None and web_resource.startswith(folder):
+                    serving.proxy_to_dev_server(flow, item["local-url"], web_resource, folder)
                     return
 
             elif item_type == "single":
-                if web_resource == item["name"]:
-                    serving.serve_file(flow, item["file"], item_type, item["name"], item["_base_dir"])
+                name = item["web-resource-name"]
+                if web_resource == name:
+                    serving.serve_file(flow, item["local-path"], item_type, name, item["_base_dir"])
                     return
 
             elif item_type == "folder":
-                if web_resource is not None and web_resource.startswith(item["name"]):
-                    relative = web_resource[len(item["name"]):]
+                folder = item["web-resource-folder"]
+                if web_resource is not None and web_resource.startswith(folder):
+                    relative = web_resource[len(folder):]
                     serving.serve_file(
                         flow,
-                        os.path.join(item["folder"], *relative.split("/")),
+                        os.path.join(item["local-path"], *relative.split("/")),
                         item_type,
-                        item["name"],
+                        folder,
                         item["_base_dir"],
-                        root=item["folder"],
+                        root=item["local-path"],
                     )
                     return
 
             elif item_type == "pcf":
-                hit = matching.pcf_match(flow.request.path, item["name"])
+                control = item["control"]
+                hit = matching.pcf_match(flow.request.path, control)
                 if hit is not None:
                     relative, is_css = hit
-                    parts = [item["folder"]]
+                    parts = [item["local-path"]]
                     if is_css:
                         parts.append("css")
                     parts.extend(segment for segment in relative.split("/") if segment)
@@ -100,8 +104,8 @@ class DataverseProxy:
                         flow,
                         os.path.join(*parts),
                         item_type,
-                        item["name"],
+                        control,
                         item["_base_dir"],
-                        root=item["folder"],
+                        root=item["local-path"],
                     )
                     return
