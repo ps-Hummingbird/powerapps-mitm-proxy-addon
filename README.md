@@ -8,7 +8,7 @@ locally without deploying on every change.
 ## Prerequisites
 
 - **Node.js** >= 16.
-- **mitmproxy** — install from <https://www.mitmproxy.org/> — e.g. `pipx install mitmproxy`.
+- **mitmproxy** — install from <https://www.mitmproxy.org/>
 
 ## Install
 
