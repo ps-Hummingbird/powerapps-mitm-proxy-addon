@@ -55,7 +55,7 @@ class DataverseProxy:
     def tls_start_server(self, data: tls.TlsData) -> None:
         start_dev_server_tls(data)
 
-    def request(self, flow: http.HTTPFlow) -> None:
+    async def request(self, flow: http.HTTPFlow) -> None:
         host = flow.request.pretty_host
         web_resource = matching.web_resource_name(flow.request)
 
@@ -68,7 +68,7 @@ class DataverseProxy:
             if item_type == "devserver":
                 folder = item["web-resource-folder"]
                 if web_resource is not None and web_resource.startswith(folder):
-                    serving.proxy_to_dev_server(flow, item["local-url"], web_resource, folder)
+                    await serving.proxy_to_dev_server(flow, item["local-url"], web_resource, folder)
                     return
 
             elif item_type == "single":

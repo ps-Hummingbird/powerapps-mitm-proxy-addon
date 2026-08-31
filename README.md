@@ -51,6 +51,7 @@ chrome.exe --proxy-server="http://localhost:8080"
 - Chrome/Edge share one background process across windows. Close all
   Chrome/Edge windows first, or use a separate profile:
   `msedge.exe --user-data-dir="%LOCALAPPDATA%\mitmproxy-browser-profile" --proxy-server="http://localhost:8080"`
+    - Use Start > Run (winkey + R) to run it or make a shortcut if using this frequently.
 - Power Apps caches assets in the browser. If changes don't show, hard refresh
   (`Ctrl+Shift+R`); you may also need to bypass the service worker cache
   (DevTools → Application → Service Workers → "Bypass for network").

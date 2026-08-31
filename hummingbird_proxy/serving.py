@@ -2,12 +2,16 @@
 
 from urllib.parse import urlsplit
 
+import asyncio
 import mimetypes
 import os
 
 from mitmproxy import ctx, http
 
 from hummingbird_proxy.config import resolve_path
+
+# Fail fast when the dev server is down; a localhost connect is otherwise instant.
+_DEV_SERVER_PROBE_TIMEOUT = 1.0
 
 # Explicit types for common web assets; the OS mimetypes DB is unreliable here
 # (e.g. Windows maps .js to text/plain, which browsers refuse to execute).
@@ -76,14 +80,46 @@ def serve_file(
     _log_redirect(flow, rule_type, rule_name, absolute_path)
 
 
-def proxy_to_dev_server(flow: http.HTTPFlow, url: str, web_resource: str, rule_name: str) -> None:
+async def _dev_server_reachable(host: str, port: int) -> bool:
+    try:
+        _, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port), _DEV_SERVER_PROBE_TIMEOUT
+        )
+    except (OSError, asyncio.TimeoutError):
+        return False
+    writer.close()
+    try:
+        await writer.wait_closed()
+    except OSError:
+        pass
+    return True
+
+
+async def proxy_to_dev_server(
+    flow: http.HTTPFlow, url: str, web_resource: str, rule_name: str
+) -> None:
     target = urlsplit(url)
+    host = target.hostname or "localhost"
+    port = target.port or (443 if target.scheme == "https" else 80)
+    # Probe first: if we let mitmproxy attempt a dead upstream, it caches the
+    # connection error on the client's HTTP/2 tunnel and reuses it for every
+    # later request, so the page stays broken until the proxy restarts even
+    # after the dev server comes up. Returning our own 502 avoids that cache.
+    if not await _dev_server_reachable(host, port):
+        ctx.log.warn(f"Dev server unreachable for devserver:{rule_name} -> {host}:{port}")
+        flow.response = http.Response.make(
+            502,
+            f"dataverseproxy: dev server not reachable at {host}:{port} "
+            f"(devserver:{rule_name}). Start it and refresh.".encode(),
+            {"Content-Type": "text/plain"},
+        )
+        return
     query = flow.request.path.split("?", 1)[1] if "?" in flow.request.path else ""
     new_path = "/webresources/" + web_resource
     if query:
         new_path += "?" + query
     flow.request.scheme = target.scheme
-    flow.request.host = target.hostname or "localhost"
-    flow.request.port = target.port or (443 if target.scheme == "https" else 80)
+    flow.request.host = host
+    flow.request.port = port
     flow.request.path = new_path
     _log_redirect(flow, "devserver", rule_name, f"{url}{new_path}")
